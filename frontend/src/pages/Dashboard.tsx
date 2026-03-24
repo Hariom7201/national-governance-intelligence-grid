@@ -1,73 +1,142 @@
-import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { DASHBOARD_STATS, TREND_DATA, DISTRICT_DATA } from '../constants/mockData';
-import { Card, cn } from '../components/Shared';
+import React, { useMemo } from 'react';
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer, Cell
+} from 'recharts';
+import { Users, AlertTriangle, ShieldAlert, CheckCircle } from 'lucide-react';
+import { useDistricts } from '../hooks/useDistricts';
+import { useFraud } from '../hooks/useFraud';
+import { useCrisis } from '../hooks/useCrisis';
+import KPICard from '../components/KPICard';
+import InsightBanner from '../components/InsightBanner';
+import { toDistrictRiskBars, generateTrendData, toKPISummary } from '../utils/dataTransformers';
+import { generateInsights } from '../utils/intelligenceEngine';
 
-const DashboardPage = () => (
-  <div className="space-y-6">
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {DASHBOARD_STATS.map((stat, i) => (
-        <Card key={i} className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-slate-500 font-medium">{stat.label}</p>
-            <h4 className="text-2xl font-bold text-slate-900 mt-1">{stat.value}</h4>
-            <p className={cn("text-xs mt-1 font-medium", stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600')}>
-              {stat.change} vs last month
-            </p>
-          </div>
-          <div className={cn("p-3 rounded-lg bg-slate-50", stat.color)}>
-            <stat.icon size={24} />
-          </div>
-        </Card>
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+      padding: '10px 14px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+    }}>
+      <p style={{ color: '#64748b', fontSize: 12, marginBottom: 4 }}>{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} style={{ color: p.color, fontSize: 13, fontWeight: 600, margin: '2px 0' }}>
+          {p.dataKey}: {p.value.toLocaleString()}
+        </p>
       ))}
     </div>
+  );
+};
 
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card title="Grievance vs Action Trends">
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={TREND_DATA}>
-              <defs>
-                <linearGradient id="colorG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-              <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              />
-              <Area type="monotone" dataKey="grievances" stroke="#3b82f6" fillOpacity={1} fill="url(#colorG)" strokeWidth={2} />
-              <Area type="monotone" dataKey="actions" stroke="#10b981" fillOpacity={0} strokeWidth={2} />
-            </AreaChart>
+export default function Dashboard() {
+  const { districts, loading: dLoad } = useDistricts(true);
+  const { fraudAlerts, loading: fLoad } = useFraud();
+  const { crises, loading: cLoad } = useCrisis();
+
+  const kpis = useMemo(() => toKPISummary(districts, crises, fraudAlerts), [districts, crises, fraudAlerts]);
+  const trendData = useMemo(() => generateTrendData(districts), [districts]);
+  const riskBars = useMemo(() => toDistrictRiskBars(districts), [districts]);
+  const insights = useMemo(() => generateInsights(districts, crises, fraudAlerts), [districts, crises, fraudAlerts]);
+
+  if (dLoad || fLoad || cLoad) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+        <div style={{ color: '#64748b', fontSize: 15 }}>Loading intelligence grid...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', margin: 0 }}>Dashboard</h1>
+        <p style={{ color: '#64748b', fontSize: 14, marginTop: 4 }}>Real-time intelligence and governance overview.</p>
+      </div>
+
+      <InsightBanner insights={insights} />
+
+      {/* KPI Cards */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+        <KPICard
+          title="Total Grievances"
+          value={kpis.totalGrievances}
+          delta="+12% vs last month"
+          deltaPositive={false}
+          icon={<Users size={18} />}
+          accentColor="#3b82f6"
+        />
+        <KPICard
+          title="Active Crises"
+          value={kpis.activeCrises}
+          delta="-5% vs last month"
+          deltaPositive={true}
+          icon={<AlertTriangle size={18} />}
+          accentColor="#f59e0b"
+        />
+        <KPICard
+          title="Fraud Alerts"
+          value={kpis.fraudCount}
+          delta="+8% vs last month"
+          deltaPositive={false}
+          icon={<ShieldAlert size={18} />}
+          accentColor="#ef4444"
+        />
+        <KPICard
+          title="Actions Taken"
+          value={kpis.actionsTaken}
+          delta="+15% vs last month"
+          deltaPositive={true}
+          icon={<CheckCircle size={18} />}
+          accentColor="#22c55e"
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+        {/* Line Chart */}
+        <div style={{
+          background: '#fff', borderRadius: 14, padding: '20px 24px',
+          border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+        }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 20 }}>
+            Grievance vs Action Trends
+          </h2>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={trendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Line type="monotone" dataKey="grievances" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: '#3b82f6' }} />
+              <Line type="monotone" dataKey="actions" stroke="#22c55e" strokeWidth={2.5} dot={{ r: 3, fill: '#22c55e' }} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
-      </Card>
 
-      <Card title="District Risk Distribution">
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={DISTRICT_DATA}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-              <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-              <Tooltip 
-                cursor={{fill: '#f8fafc'}}
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-              />
-              <Bar dataKey="issues" radius={[4, 4, 0, 0]}>
-                {DISTRICT_DATA.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.risk === 'High' ? '#ef4444' : entry.risk === 'Medium' ? '#f59e0b' : '#22c55e'} />
+        {/* Bar Chart */}
+        <div style={{
+          background: '#fff', borderRadius: 14, padding: '20px 24px',
+          border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+        }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 20 }}>
+            District Risk Distribution
+          </h2>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={riskBars} barSize={32}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="shortName" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="active_issues" radius={[6, 6, 0, 0]}>
+                {riskBars.map((entry, index) => (
+                  <Cell key={index} fill={entry.fill} />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </Card>
+      </div>
     </div>
-  </div>
-);
-
-export default DashboardPage;
+  );
+}
