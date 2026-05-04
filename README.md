@@ -1,4 +1,5 @@
-<<<<<<< HEAD
+
+
 # National Governance Intelligence Grid (NGIG)
 
 AI-Powered Decision Intelligence Platform for Predictive Public Administration.
