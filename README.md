@@ -2,6 +2,8 @@
 
 # National Governance Intelligence Grid (NGIG)
 
+# DEPLOYMENT LINK - https://6a211d491--national-government-intelligence-grid.netlify.app/
+
 AI-Powered Decision Intelligence Platform for Predictive Public Administration.
 
 NGIG transforms fragmented governance datasets into a unified intelligence graph that detects emerging citizen issues, validates scheme distribution patterns, and recommends administrative actions in real time.
