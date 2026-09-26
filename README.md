@@ -2,7 +2,7 @@
 
 # National Governance Intelligence Grid (NGIG)
 
-# DEPLOYMENT LINK - https://6a211d491--national-government-intelligence-grid.netlify.app/
+# DEPLOYMENT LINK - https://agent-6a006cb9b--effervescent-travesseiro-b68311.netlify.app/
 
 AI-Powered Decision Intelligence Platform for Predictive Public Administration.
 
